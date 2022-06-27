@@ -14,6 +14,7 @@ import (
 )
 
 var lookupTableFilePath string
+var serviceGuidenFilePath string
 
 func main() {
 	serviceVersion := buildinfo.SourceVersion()
@@ -23,16 +24,17 @@ func main() {
 	defer cleanup()
 
 	flag.StringVar(&lookupTableFilePath, "references", "/opt/diwise/config/lookup.csv", "A file with cross-references from service guiden to nutscodes and devices")
+	flag.StringVar(&serviceGuidenFilePath, "sg", "/opt/diwise/config/serviceguiden.json", "A file with ServiceGuiden contents")
 	flag.Parse()
 
 	serviceGuidenUrl := env.GetVariableOrDefault(logger, "SERVICE_GUIDEN", "https://microservices.goteborg.se/sdw-service/api/internal/v1/sites?size=10000")
 	contextBrokerUrl := env.GetVariableOrDefault(logger, "CONTEXT_BROKER", "http://context-broker:8080")
 
-	sgClient := serviceguiden.New(serviceGuidenUrl)
+	sgClient := serviceguiden.New(serviceGuidenUrl, serviceGuidenFilePath)
 	cbClient := contextbroker.New(logger, contextBrokerUrl)
 	lookupTable := lookup.New(logger, lookupTableFilePath)
 
-	app := application.New(sgClient, cbClient, lookupTable)
+	app := application.New(sgClient, cbClient, lookupTable, logger)
 
 	app.CreateOrUpdateBeachModels(ctx)
 }

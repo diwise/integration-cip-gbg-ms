@@ -1,30 +1,75 @@
 version: '3'
 services:
-  orion:
-    image: fiware/orion-ld
-    hostname: orion
-    container_name: fiware-orion
-    depends_on:
-      - mongo-db
+  api-opendata:
+    image: 'ghcr.io/diwise/api-opendata:prod-f6fbd263c0caae20dee83cd95be6c654100dd390'
+    hostname: api-opendata
+    container_name: api-opendata
     expose:
-      - "1026"
+      - "8080"
     ports:
-      - "1026:1026"
-    command: -dbhost mongo-db -logLevel DEBUG
-    healthcheck:
-      test: curl --fail -s http://orion:1026/version || exit 1
+      - "8080:8080"
+    environment:
+      STRATSYS_ENABLED : false
+      DIWISE_CONTEXT_BROKER_URL : "http://context-broker:8080"
 
-  mongo-db:
-    image: mongo:3.6
-    hostname: mongo-db
-    container_name: db-mongo
+  context-broker:
+    image: 'ghcr.io/diwise/context-broker:prod-9c60c887924e2fc03eeec268ce889c0094b046dd'
+    hostname: context-broker
+    container_name: context-broker
     expose:
-      - "27017"
+      - "8081"
+    restart: always
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: 'http://otel-collector:4318'
+    depends_on:
+      - orion-ld
+    volumes:
+      - ./configs/diwise/context-broker.yaml:/opt/diwise/config/default.yaml
     ports:
-      - "27017:27017"
-    command: --nojournal
+      - '8081:8080'
+
+  orion-ld:
+    image: 'quay.io/fiware/orion-ld@sha256:ea838e5b405170b6d42af9035a30454a21870f7f3738db73da27585bf6a478b3'
+    restart: always
+    environment:
+      ORIONLD_MONGO_HOST: 'mongodb'
+      ORIONLD_MONGO_USER: 'admin'
+      ORIONLD_MONGO_PASSWORD: 'password'
+      ORIONLD_LOG_FOR_HUMANS: 'TRUE'
+      ORIONLD_TROE:	'FALSE'
+      ORIONLD_DISABLE_FILE_LOG: 'TRUE'
+    depends_on:
+      - mongodb
+    ports:
+      - '8082:1026'
+
+  mongodb:
+    image: mongo:5
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: 'admin'
+      MONGO_INITDB_ROOT_PASSWORD: 'password'
+    ports:
+      - '27017'
+    command: --nojournal --quiet
     volumes:
       - mongo-db:/data
+
+
+  mongo-express:
+    image: mongo-express
+    restart: always
+    environment:
+      ME_CONFIG_MONGODB_SERVER: 'mongodb'
+      ME_CONFIG_MONGODB_PORT: 27017
+      ME_CONFIG_MONGODB_ENABLE_ADMIN: 'true'
+      ME_CONFIG_MONGODB_AUTH_DATABASE: 'admin'
+      ME_CONFIG_MONGODB_ADMINUSERNAME: 'admin'
+      ME_CONFIG_MONGODB_ADMINPASSWORD: 'password'
+      ME_CONFIG_BASICAUTH_USERNAME: ''
+    depends_on:
+        - mongodb
+    ports:
+      - '8083:8081'
 
 volumes:
   mongo-db: ~

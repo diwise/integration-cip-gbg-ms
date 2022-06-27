@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
@@ -22,6 +23,7 @@ type ServiceGuidenClient interface {
 type serviceGuidenClient struct {
 	serviceUrl string
 	badplatser []Content
+	contents   []byte
 }
 
 type sgResponse struct {
@@ -131,10 +133,18 @@ func (c Content) AreaServed() string {
 	return ""
 }
 
-func New(url string) ServiceGuidenClient {
+func New(url, filePath string) ServiceGuidenClient {
+	var c []byte
+
+	if f, err := os.Open(filePath); err == nil {
+		if b, err := io.ReadAll(f); err == nil {
+			c = b
+		}
+	}
 
 	return &serviceGuidenClient{
 		serviceUrl: url,
+		contents:   c,
 	}
 }
 
@@ -185,16 +195,35 @@ func (sgc serviceGuidenClient) Get(ctx context.Context) (*sgResponse, error) {
 	return &m, err
 }
 
+func (sgc serviceGuidenClient) getFromCache() (*sgResponse, error) {
+	if sgc.contents == nil {
+		return nil, nil
+	}
+
+	var m sgResponse
+	err := json.Unmarshal(sgc.contents, &m)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal model")
+	}
+
+	return &m, err
+}
+
 func (sgc *serviceGuidenClient) Badplatser(ctx context.Context) ([]Content, error) {
 	if len(sgc.badplatser) > 0 {
 		return sgc.badplatser, nil
 	}
 
-	resp, err := sgc.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
+	var resp *sgResponse
 
+	resp, err := sgc.getFromCache()
+
+	if resp == nil || err != nil {
+		resp, err = sgc.Get(ctx)
+		if err != nil {
+			return nil, err
+		}
+	}
 	for _, c := range resp.Content {
 		if !c.Deleted {
 			for _, st := range c.ServiceTypes {

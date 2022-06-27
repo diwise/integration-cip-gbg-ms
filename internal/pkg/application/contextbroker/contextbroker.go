@@ -10,6 +10,7 @@ import (
 
 	"github.com/diwise/context-broker/pkg/datamodels/fiware"
 	"github.com/diwise/context-broker/pkg/ngsild/client"
+	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
 	. "github.com/diwise/context-broker/pkg/ngsild/types/entities/decorators"
 	"github.com/diwise/integration-cip-gbg-ms/internal/pkg/application/serviceguiden"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
@@ -53,13 +54,23 @@ func newBeach(ctx context.Context, cbClient client.ContextBrokerClient, badplats
 		id = fiware.BeachIDPrefix + badplats.Id
 	}
 
+	lat := badplats.Position.Latitude
+	lon := badplats.Position.Longitude
+
 	beach, err := fiware.NewBeach(
 		id,
 		badplats.Name,
-		Location(badplats.Position.Latitude, badplats.Position.Longitude),
+		LocationMP([][][][]float64{{{
+			{lon, lat},
+			{lon, lat+0.0001},
+			{lon+0.0001, lat+0.0001},
+			{lon, lat},
+		}}}),
+		entities.DefaultContext(),
 		Text("description", badplats.Description),
 		Text("areaServed", badplats.AreaServed()),
 		Text("dataProvider", "ServiceGuiden"),
+		Text("source", badplats.Id),
 		DateCreated(time.Now().UTC().Format(time.RFC3339)),
 		TextList("facilities", badplats.Facilities()),
 		TextList("seeAlso", textListWithoutEmptyValues([]string{badplats.SeeAlso(), getNutsCodeUrl(nutsCode), badplats.AccessibilityUrl})),
@@ -72,6 +83,10 @@ func newBeach(ctx context.Context, cbClient client.ContextBrokerClient, badplats
 	_, err = cbClient.CreateEntity(ctx, beach, headers)
 
 	return err
+}
+
+func updateBeach(ctx context.Context, cbClient client.ContextBrokerClient, badplats serviceguiden.Content, nutsCode string) error {
+	return nil
 }
 
 func textListWithoutEmptyValues(values []string) []string {
