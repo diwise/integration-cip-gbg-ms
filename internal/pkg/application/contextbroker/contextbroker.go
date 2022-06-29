@@ -62,8 +62,8 @@ func newBeach(ctx context.Context, cbClient client.ContextBrokerClient, badplats
 		badplats.Name,
 		LocationMP([][][][]float64{{{
 			{lon, lat},
-			{lon, lat+0.0001},
-			{lon+0.0001, lat+0.0001},
+			{lon, lat + 0.0001},
+			{lon + 0.0001, lat + 0.0001},
 			{lon, lat},
 		}}}),
 		entities.DefaultContext(),
@@ -72,7 +72,7 @@ func newBeach(ctx context.Context, cbClient client.ContextBrokerClient, badplats
 		Text("dataProvider", "ServiceGuiden"),
 		Text("source", badplats.Id),
 		DateCreated(time.Now().UTC().Format(time.RFC3339)),
-		TextList("facilities", badplats.Facilities()),
+		TextList("beachType", badplats.BeachTypes()),
 		TextList("seeAlso", textListWithoutEmptyValues([]string{badplats.SeeAlso(), getNutsCodeUrl(nutsCode), badplats.AccessibilityUrl})),
 	)
 	if err != nil {
@@ -129,7 +129,7 @@ func (c contextBroker) QueryEntities(ctx context.Context, params url.Values) ([]
 
 	req.Header = map[string][]string{
 		"Accept": {"application/ld+json"},
-		"Link":   {"<https://schema.lab.fiware.org/ld/context>; rel=\"http://www.w3.org/ns/json-ld#context\"; type=\"application/ld+json\""},
+		"Link":   {"<" + entities.DefaultContextURL + ">; rel=\"http://www.w3.org/ns/json-ld#context\"; type=\"application/ld+json\""},
 	}
 
 	resp, err := httpClient.Do(req)

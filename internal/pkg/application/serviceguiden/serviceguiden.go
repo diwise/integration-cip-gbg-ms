@@ -103,7 +103,7 @@ func (c Content) Inriktning() string {
 	return ""
 }
 
-func (c Content) Facilities() []string {
+func (c Content) BeachTypes() []string {
 	var s []string
 	facilities := strings.Split(c.Inriktning(), ",")
 

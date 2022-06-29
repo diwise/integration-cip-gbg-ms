@@ -1,7 +1,7 @@
 version: '3'
 services:
   api-opendata:
-    image: 'ghcr.io/diwise/api-opendata:prod-f6fbd263c0caae20dee83cd95be6c654100dd390'
+    image: 'ghcr.io/diwise/api-opendata:prod-15faddaa05a94cf8bb48ec22a390ae79b10de667'
     hostname: api-opendata
     container_name: api-opendata
     expose:
@@ -13,7 +13,7 @@ services:
       DIWISE_CONTEXT_BROKER_URL : "http://context-broker:8080"
 
   context-broker:
-    image: 'ghcr.io/diwise/context-broker:prod-9c60c887924e2fc03eeec268ce889c0094b046dd'
+    image: 'ghcr.io/diwise/context-broker:prod-70a1eb2854fe304240b785a9b1ff7b9b059bc085'
     hostname: context-broker
     container_name: context-broker
     expose:
