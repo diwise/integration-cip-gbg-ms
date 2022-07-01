@@ -37,5 +37,8 @@ func main() {
 
 	app := application.New(sgClient, cbClient, lookupTable, logger)
 
-	app.CreateOrUpdateBeachModels(ctx)
+	err := app.CreateOrUpdateBeachModels(ctx)
+	if err != nil {
+		logger.Error().Err(err).Msg("beach update failed")
+	}
 }
