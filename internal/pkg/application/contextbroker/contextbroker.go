@@ -13,7 +13,6 @@ import (
 	"github.com/diwise/context-broker/pkg/ngsild/types/entities"
 	. "github.com/diwise/context-broker/pkg/ngsild/types/entities/decorators"
 	"github.com/diwise/integration-cip-gbg-ms/internal/pkg/application/serviceguiden"
-	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -114,13 +113,11 @@ func (c contextBroker) QueryEntities(ctx context.Context, params url.Values) ([]
 	ctx, span := tracer.Start(ctx, "integration-cip-gbg/context-broker/queryentities")
 	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-	log := logging.GetFromContext(ctx)
-
 	httpClient := http.Client{
 		Transport: otelhttp.NewTransport(http.DefaultTransport),
 	}
 
-	reqUrl := fmt.Sprintf("%s/%s?%s", c.baseUrl, "ngsi-ld/v1/entities", params.Encode())
+	reqUrl := fmt.Sprintf("%s/ngsi-ld/v1/entities?%s", c.baseUrl, params.Encode())
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqUrl, nil)
 	if err != nil {
@@ -134,20 +131,20 @@ func (c contextBroker) QueryEntities(ctx context.Context, params url.Values) ([]
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to retrieve data from context-broker")
+		err = fmt.Errorf("failed to retrieve data from context-broker: %s", err.Error())
 		return nil, err
 	}
 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.Error().Msgf("failed to retrieve data from context-broker, expected status code %d, but got %d", http.StatusOK, resp.StatusCode)
-		return nil, fmt.Errorf("expected status code %d, but got %d", http.StatusOK, resp.StatusCode)
+		err = fmt.Errorf("failed to retrieve data from context-broker, expected status code %d, but got %d", http.StatusOK, resp.StatusCode)
+		return nil, err
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to read response body")
+		err = fmt.Errorf("failed to read response body: %s", err.Error())
 		return nil, err
 	}
 

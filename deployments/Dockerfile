@@ -19,6 +19,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build
 FROM registry.access.redhat.com/ubi8/ubi-minimal
 WORKDIR /opt/diwise
 
+COPY --chown=1001 assets/config/lookup.csv /opt/diwise/config/lookup.csv
 COPY --from=builder --chown=1001 /app/cmd/integration-cip-gbg-ms/integration-cip-gbg-ms /opt/diwise
 
 RUN chown 1001 /opt/diwise

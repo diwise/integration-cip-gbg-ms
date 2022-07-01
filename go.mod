@@ -29,7 +29,7 @@ require (
 )
 
 require (
-	github.com/diwise/context-broker v0.0.0-20220616115237-a37ada0d1edf
+	github.com/diwise/context-broker v0.0.0-20220630194749-9dc18eac8779
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/rs/zerolog v1.27.0

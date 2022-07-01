@@ -9,7 +9,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/tracing"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
@@ -156,8 +155,6 @@ func (sgc serviceGuidenClient) Get(ctx context.Context) (*sgResponse, error) {
 	ctx, span := tracer.Start(ctx, "integration-cip-gbg-ms/serviceguiden/get")
 	defer func() { tracing.RecordAnyErrorAndEndSpan(err, span) }()
 
-	log := logging.GetFromContext(ctx)
-
 	httpClient := http.Client{
 		Transport: otelhttp.NewTransport(http.DefaultTransport),
 	}
@@ -169,27 +166,28 @@ func (sgc serviceGuidenClient) Get(ctx context.Context) (*sgResponse, error) {
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to retrieve data from serviceguiden")
+		err = fmt.Errorf("failed to retrieve data from serviceguiden: %s", err.Error())
 		return nil, err
 	}
 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.Error().Msgf("failed to retrieve data from serviceguiden, expected status code %d, but got %d", http.StatusOK, resp.StatusCode)
-		return nil, fmt.Errorf("expected status code %d, but got %d", http.StatusOK, resp.StatusCode)
+		err = fmt.Errorf("failed to retrieve data from serviceguiden, expected status code %d, but got %d", http.StatusOK, resp.StatusCode)
+		return nil, err
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to read response body")
+		err = fmt.Errorf("failed to read response body: %s", err.Error())
 		return nil, err
 	}
 
 	var m sgResponse
 	err = json.Unmarshal(body, &m)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal model")
+		err = fmt.Errorf("failed to unmarshal data: %s", err.Error())
+		return nil, err
 	}
 
 	return &m, err

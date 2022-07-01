@@ -6,8 +6,8 @@ import (
 
 	"github.com/diwise/integration-cip-gbg-ms/internal/pkg/application"
 	"github.com/diwise/integration-cip-gbg-ms/internal/pkg/application/contextbroker"
-	"github.com/diwise/integration-cip-gbg-ms/internal/pkg/application/serviceguiden"
 	"github.com/diwise/integration-cip-gbg-ms/internal/pkg/application/lookup"
+	"github.com/diwise/integration-cip-gbg-ms/internal/pkg/application/serviceguiden"
 	"github.com/diwise/service-chassis/pkg/infrastructure/buildinfo"
 	"github.com/diwise/service-chassis/pkg/infrastructure/env"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y"
@@ -16,9 +16,10 @@ import (
 var lookupTableFilePath string
 var serviceGuidenFilePath string
 
+const serviceName string = "integration-cip-gbg"
+
 func main() {
 	serviceVersion := buildinfo.SourceVersion()
-	serviceName := "integration-cip-gbg"
 
 	ctx, logger, cleanup := o11y.Init(context.Background(), serviceName, serviceVersion)
 	defer cleanup()
