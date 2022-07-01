@@ -29,7 +29,7 @@ func main() {
 	flag.Parse()
 
 	serviceGuidenUrl := env.GetVariableOrDefault(logger, "SERVICE_GUIDEN", "https://microservices.goteborg.se/sdw-service/api/internal/v1/sites?size=10000")
-	contextBrokerUrl := env.GetVariableOrDefault(logger, "CONTEXT_BROKER", "http://context-broker:8080")
+	contextBrokerUrl := env.GetVariableOrDefault(logger, "CONTEXT_BROKER", "http://context-broker")
 
 	sgClient := serviceguiden.New(serviceGuidenUrl, serviceGuidenFilePath)
 	cbClient := contextbroker.New(logger, contextBrokerUrl)
