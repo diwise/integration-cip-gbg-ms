@@ -84,10 +84,6 @@ func newBeach(ctx context.Context, cbClient client.ContextBrokerClient, badplats
 	return err
 }
 
-func updateBeach(ctx context.Context, cbClient client.ContextBrokerClient, badplats serviceguiden.Content, nutsCode string) error {
-	return nil
-}
-
 func textListWithoutEmptyValues(values []string) []string {
 	s := []string{}
 	for _, v := range values {
@@ -126,7 +122,7 @@ func (c contextBroker) QueryEntities(ctx context.Context, params url.Values) ([]
 
 	req.Header = map[string][]string{
 		"Accept": {"application/ld+json"},
-		"Link":   {"<" + entities.DefaultContextURL + ">; rel=\"http://www.w3.org/ns/json-ld#context\"; type=\"application/ld+json\""},
+		"Link":   {entities.LinkHeader},
 	}
 
 	resp, err := httpClient.Do(req)

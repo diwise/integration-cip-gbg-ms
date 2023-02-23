@@ -40,11 +40,6 @@ func (a app) CreateOrUpdateBeachModels(ctx context.Context) error {
 		if err = a.cbClient.NewBeach(ctx, badplats, nutsCode); err != nil {
 			a.log.Err(err).Msg("unable to create new Beach")
 		}
-		/*
-			if err == "allready exists" {
-				a.cbClient.UpdateBeach(ctx, badplats, nutsCode)
-			}
-		*/
 	}
 
 	return nil
