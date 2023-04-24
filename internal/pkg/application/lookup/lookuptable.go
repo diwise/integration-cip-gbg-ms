@@ -20,30 +20,32 @@ type LookupTable interface {
 	GetDeviceId(serviceguidenId string) (string, bool)
 }
 
-type lookupTable struct {
+type impl struct {
 	table map[string]*Lookup
 }
 
 func New(logger zerolog.Logger, filePath string) LookupTable {
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		logger.Fatal().Msgf("file %s does not exist", filePath)
+	}
+
 	file, err := os.Open(filePath)
 	if err != nil {
-		logger.Err(err).Msgf("unable to open file %s", filePath)
-		panic(err)
+		logger.Fatal().Msgf("unable to open file %s", filePath)
 	}
 	defer file.Close()
 
-	data, err := loaddata(logger, file)
+	data, err := load(logger, file)
 	if err != nil {
-		logger.Err(err).Msgf("unable to load data from file %s", filePath)
-		panic(err)
+		logger.Fatal().Msgf("unable to load data from file %s", filePath)
 	}
 
-	return &lookupTable{
+	return &impl{
 		table: data,
 	}
 }
 
-func loaddata(log zerolog.Logger, file io.Reader) (map[string]*Lookup, error) {
+func load(log zerolog.Logger, file io.Reader) (map[string]*Lookup, error) {
 	r := csv.NewReader(file)
 	r.Comma = ';'
 
@@ -71,7 +73,7 @@ func loaddata(log zerolog.Logger, file io.Reader) (map[string]*Lookup, error) {
 	return data, nil
 }
 
-func (l lookupTable) GetNutsCode(serviceGuidenId string) (string, bool) {
+func (l impl) GetNutsCode(serviceGuidenId string) (string, bool) {
 	if v, ok := l.table[serviceGuidenId]; ok {
 		if v.NutsCode == "" {
 			return "", false
@@ -82,7 +84,7 @@ func (l lookupTable) GetNutsCode(serviceGuidenId string) (string, bool) {
 	return "", false
 }
 
-func (l lookupTable) GetDeviceId(serviceGuidenId string) (string, bool) {
+func (l impl) GetDeviceId(serviceGuidenId string) (string, bool) {
 	if v, ok := l.table[serviceGuidenId]; ok {
 		return v.DeviceId, true
 	}

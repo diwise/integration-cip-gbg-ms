@@ -4,8 +4,10 @@ import (
 	"context"
 	"flag"
 
-	"github.com/diwise/integration-cip-gbg-ms/internal/pkg/application"
-	"github.com/diwise/integration-cip-gbg-ms/internal/pkg/application/contextbroker"
+	"github.com/diwise/context-broker/pkg/datamodels/fiware"
+	"github.com/diwise/context-broker/pkg/ngsild/client"
+
+	"github.com/diwise/integration-cip-gbg-ms/internal/pkg/application/cip"
 	"github.com/diwise/integration-cip-gbg-ms/internal/pkg/application/lookup"
 	"github.com/diwise/integration-cip-gbg-ms/internal/pkg/application/serviceguiden"
 	"github.com/diwise/service-chassis/pkg/infrastructure/buildinfo"
@@ -31,14 +33,40 @@ func main() {
 	serviceGuidenUrl := env.GetVariableOrDefault(logger, "SERVICE_GUIDEN", "https://microservices.goteborg.se/sdw-service/api/internal/v1/sites?size=10000")
 	contextBrokerUrl := env.GetVariableOrDefault(logger, "CONTEXT_BROKER", "http://context-broker")
 
+	cbClient := client.NewContextBrokerClient(contextBrokerUrl)
 	sgClient := serviceguiden.New(serviceGuidenUrl, serviceGuidenFilePath)
-	cbClient := contextbroker.New(logger, contextBrokerUrl)
 	lookupTable := lookup.New(logger, lookupTableFilePath)
 
-	app := application.New(sgClient, cbClient, lookupTable, logger)
-
-	err := app.CreateOrUpdateBeachModels(ctx)
+	err := run(ctx, sgClient, lookupTable, cbClient)
 	if err != nil {
-		logger.Error().Err(err).Msg("beach update failed")
+		logger.Error().Err(err).Msg("failed to create or update beaches")
 	}
+}
+
+func run(ctx context.Context, sgClient serviceguiden.ServiceGuidenClient, lookupTable lookup.LookupTable, cbClient client.ContextBrokerClient) error {
+	badplatser, err := sgClient.Badplatser(ctx)
+	if err != nil {
+		return err
+	}
+
+	getBeachID := func(nutsCode, badplatsID string) string {
+		if nutsCode != "" {
+			return fiware.BeachIDPrefix + nutsCode
+		} else {
+			return fiware.BeachIDPrefix + badplatsID
+		}
+	}
+
+	for _, badplats := range badplatser {
+		nutsCode, _ := lookupTable.GetNutsCode(badplats.Id)
+
+		props := cip.NewBeach(badplats, nutsCode)
+
+		err := cip.MergeOrCreate(ctx, cbClient, getBeachID(nutsCode, badplats.Id), fiware.BeachTypeName, props)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
