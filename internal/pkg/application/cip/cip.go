@@ -28,7 +28,7 @@ func MergeOrCreate(ctx context.Context, cbClient client.ContextBrokerClient, id 
 
 	fragment, err := entities.NewFragment(properties...)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create new fragment for entity %s, %w", id, err)
 	}
 
 	_, err = cbClient.MergeEntity(ctx, id, fragment, headers)
@@ -41,7 +41,7 @@ func MergeOrCreate(ctx context.Context, cbClient client.ContextBrokerClient, id 
 
 		entity, err := entities.New(id, typeName, properties...)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to create new entity props for entity %s, %w", id, err)
 		}
 
 		_, err = cbClient.CreateEntity(ctx, entity, headers)
