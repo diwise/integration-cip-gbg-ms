@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 
 	"github.com/diwise/context-broker/pkg/datamodels/fiware"
@@ -58,6 +59,8 @@ func run(ctx context.Context, sgClient serviceguiden.ServiceGuidenClient, lookup
 		}
 	}
 
+	errs := []error{}
+
 	for _, badplats := range badplatser {
 		nutsCode, _ := lookupTable.GetNutsCode(badplats.Id)
 		props := cip.NewBeach(badplats, nutsCode)
@@ -66,9 +69,9 @@ func run(ctx context.Context, sgClient serviceguiden.ServiceGuidenClient, lookup
 		err := cip.MergeOrCreate(ctx, cbClient, beachID, fiware.BeachTypeName, props)
 		if err != nil {
 			logger.Error().Err(err).Msgf("faild to merge %s", beachID)
-			return err
+			errs = append(errs, err)
 		}
 	}
 
-	return nil
+	return errors.Join(errs...)
 }
