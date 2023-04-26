@@ -77,22 +77,19 @@ func (sgc client) Get(ctx context.Context) ([]Content, error) {
 	}
 
 	resp, err := httpClient.Do(req)
-	if err != nil {
-		err = fmt.Errorf("failed to retrieve data from serviceguiden: %s", err.Error())
-		return nil, err
+	if err != nil {		
+		return nil, fmt.Errorf("failed to retrieve data from serviceguiden: %w", err)
 	}
 
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		err = fmt.Errorf("failed to retrieve data from serviceguiden, expected status code %d, but got %d", http.StatusOK, resp.StatusCode)
-		return nil, err
+	if resp.StatusCode != http.StatusOK {		
+		return nil, fmt.Errorf("failed to retrieve data from serviceguiden, expected status code %d, but got %d", http.StatusOK, resp.StatusCode)
 	}
 
 	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		err = fmt.Errorf("failed to read response body: %s", err.Error())
-		return nil, err
+	if err != nil {		
+		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
 	contents := struct {
@@ -100,9 +97,8 @@ func (sgc client) Get(ctx context.Context) ([]Content, error) {
 	}{}
 
 	err = json.Unmarshal(body, &contents)
-	if err != nil {
-		err = fmt.Errorf("failed to unmarshal data: %s", err.Error())
-		return nil, err
+	if err != nil {		
+		return nil, fmt.Errorf("failed to unmarshal data: %w", err)
 	}
 
 	return contents.Content, err

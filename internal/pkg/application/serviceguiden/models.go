@@ -65,6 +65,7 @@ func (c Content) Inriktning() string {
 				if str == "" {
 					return ""
 				}
+				
 				if strings.LastIndex(str, ",") == -1 {
 					return str
 				}

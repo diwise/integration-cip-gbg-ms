@@ -6,6 +6,7 @@ import (
 
 	"github.com/diwise/context-broker/pkg/datamodels/fiware"
 	"github.com/diwise/context-broker/pkg/ngsild/client"
+	"github.com/rs/zerolog"
 
 	"github.com/diwise/integration-cip-gbg-ms/internal/pkg/application/cip"
 	"github.com/diwise/integration-cip-gbg-ms/internal/pkg/application/lookup"
@@ -37,13 +38,13 @@ func main() {
 	sgClient := serviceguiden.New(serviceGuidenUrl, serviceGuidenFilePath)
 	lookupTable := lookup.New(logger, lookupTableFilePath)
 
-	err := run(ctx, sgClient, lookupTable, cbClient)
+	err := run(ctx, sgClient, lookupTable, cbClient, logger)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to create or update beaches")
 	}
 }
 
-func run(ctx context.Context, sgClient serviceguiden.ServiceGuidenClient, lookupTable lookup.LookupTable, cbClient client.ContextBrokerClient) error {
+func run(ctx context.Context, sgClient serviceguiden.ServiceGuidenClient, lookupTable lookup.LookupTable, cbClient client.ContextBrokerClient, logger zerolog.Logger) error {
 	badplatser, err := sgClient.Badplatser(ctx)
 	if err != nil {
 		return err
@@ -59,11 +60,12 @@ func run(ctx context.Context, sgClient serviceguiden.ServiceGuidenClient, lookup
 
 	for _, badplats := range badplatser {
 		nutsCode, _ := lookupTable.GetNutsCode(badplats.Id)
-
 		props := cip.NewBeach(badplats, nutsCode)
+		beachID := getBeachID(nutsCode, badplats.Id)
 
-		err := cip.MergeOrCreate(ctx, cbClient, getBeachID(nutsCode, badplats.Id), fiware.BeachTypeName, props)
+		err := cip.MergeOrCreate(ctx, cbClient, beachID, fiware.BeachTypeName, props)
 		if err != nil {
+			logger.Error().Err(err).Msgf("faild to merge %s", beachID)
 			return err
 		}
 	}
