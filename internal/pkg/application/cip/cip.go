@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/diwise/context-broker/pkg/ngsild/client"
@@ -59,7 +60,11 @@ func NewBeach(badplats serviceguiden.Content, nutsCode string) []entities.Entity
 	lat := badplats.Position.Latitude
 	lon := badplats.Position.Longitude
 
-	seeAlso := getSeeAlso(badplats)
+	seeAlso := filter([]string{getSeeAlso(badplats), getNutsCodeUrl(nutsCode), badplats.AccessibilityUrl}, func(s string) bool {
+		return s != ""
+	})
+
+	seeAlso = append(seeAlso, "")
 
 	props = append(props,
 		decorators.LocationMP([][][][]float64{{{
@@ -69,15 +74,15 @@ func NewBeach(badplats serviceguiden.Content, nutsCode string) []entities.Entity
 			{lon, lat},
 		}}}),
 		entities.DefaultContext(),
+		decorators.Name(badplats.Name),
 		decorators.Text("description", badplats.Description),
 		decorators.Text("areaServed", badplats.AreaServed()),
 		decorators.Text("dataProvider", "ServiceGuiden"),
 		decorators.Text("source", badplats.Id),
+		decorators.Text("businessId", strconv.FormatInt(badplats.BusinessId, 10)),
 		decorators.DateCreated(time.Now().UTC().Format(time.RFC3339)),
 		decorators.TextList("beachType", badplats.BeachTypes()),
-		decorators.TextList("seeAlso", filter([]string{seeAlso, getNutsCodeUrl(nutsCode), badplats.AccessibilityUrl}, func(s string) bool {
-			return s != ""
-		})),
+		decorators.TextList("seeAlso", seeAlso),
 	)
 
 	return props
