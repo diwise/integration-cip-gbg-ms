@@ -85,7 +85,7 @@ func (c Content) BeachTypes() []string {
 		return nil
 	}
 
-	s := []string{""}
+	s := []string{}
 	for _, f := range facilities {
 		s = append(s, strings.TrimSpace(f))
 	}
