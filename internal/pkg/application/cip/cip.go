@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/diwise/context-broker/pkg/ngsild/client"
@@ -77,7 +76,6 @@ func NewBeach(badplats serviceguiden.Content, nutsCode string) []entities.Entity
 		decorators.Text("areaServed", badplats.AreaServed()),
 		decorators.Text("dataProvider", "ServiceGuiden"),
 		decorators.Text("source", badplats.Id),
-		decorators.Text("businessId", strconv.FormatInt(badplats.BusinessId, 10)),
 		decorators.DateCreated(time.Now().UTC().Format(time.RFC3339)),
 		decorators.TextList("beachType", badplats.BeachTypes()),
 		decorators.TextList("seeAlso", seeAlso),
