@@ -20,7 +20,7 @@ var seeAlsoUrl string
 
 func init() {
 	havOchVattenProfileUrl = env.GetVariableOrDefault(zerolog.Logger{}, "HAV_OCH_VATTEN_PROFILE_URL", "https://badplatsen.havochvatten.se/badplatsen/api/testlocationprofile")
-	seeAlsoUrl = env.GetVariableOrDefault(zerolog.Logger{}, "SEE_ALSO_URL", "https://goteborg.se/wps/portal/start/kultur-och-fritid/fritid-och-natur/friluftsliv-natur-och/badplatser--utomhusbad/badplatser-utomhusbad/?id=")
+	seeAlsoUrl = env.GetVariableOrDefault(zerolog.Logger{}, "SEE_ALSO_URL", "https://goteborg.se/wps/portal/start/uppleva-och-gora/idrott-motion-och-friluftsliv/simma-och-bada/badplatser/hitta-badplatser-utomhusbad/?id=")
 }
 
 func MergeOrCreate(ctx context.Context, cbClient client.ContextBrokerClient, id string, typeName string, properties []entities.EntityDecoratorFunc) error {
@@ -59,7 +59,9 @@ func NewBeach(badplats serviceguiden.Content, nutsCode string) []entities.Entity
 	lat := badplats.Position.Latitude
 	lon := badplats.Position.Longitude
 
-	seeAlso := getSeeAlso(badplats)
+	seeAlso := filter([]string{getSeeAlso(badplats), getNutsCodeUrl(nutsCode), badplats.AccessibilityUrl}, func(s string) bool {
+		return s != ""
+	})
 
 	props = append(props,
 		decorators.LocationMP([][][][]float64{{{
@@ -69,15 +71,14 @@ func NewBeach(badplats serviceguiden.Content, nutsCode string) []entities.Entity
 			{lon, lat},
 		}}}),
 		entities.DefaultContext(),
+		decorators.Name(badplats.Name),
 		decorators.Text("description", badplats.Description),
 		decorators.Text("areaServed", badplats.AreaServed()),
 		decorators.Text("dataProvider", "ServiceGuiden"),
 		decorators.Text("source", badplats.Id),
 		decorators.DateCreated(time.Now().UTC().Format(time.RFC3339)),
 		decorators.TextList("beachType", badplats.BeachTypes()),
-		decorators.TextList("seeAlso", filter([]string{seeAlso, getNutsCodeUrl(nutsCode), badplats.AccessibilityUrl}, func(s string) bool {
-			return s != ""
-		})),
+		decorators.TextList("seeAlso", seeAlso),
 	)
 
 	return props

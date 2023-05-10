@@ -65,7 +65,7 @@ func (c Content) Inriktning() string {
 				if str == "" {
 					return ""
 				}
-				
+
 				if strings.LastIndex(str, ",") == -1 {
 					return str
 				}
@@ -79,13 +79,13 @@ func (c Content) Inriktning() string {
 }
 
 func (c Content) BeachTypes() []string {
-	var s []string
 	facilities := strings.Split(c.Inriktning(), ",")
 
 	if len(facilities) == 0 {
-		return s
+		return nil
 	}
 
+	s := []string{}
 	for _, f := range facilities {
 		s = append(s, strings.TrimSpace(f))
 	}
