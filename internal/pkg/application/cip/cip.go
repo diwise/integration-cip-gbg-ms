@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/diwise/context-broker/pkg/ngsild/client"
@@ -12,6 +13,7 @@ import (
 	"github.com/diwise/context-broker/pkg/ngsild/types/entities/decorators"
 	"github.com/diwise/integration-cip-gbg-ms/internal/pkg/application/serviceguiden"
 	"github.com/diwise/service-chassis/pkg/infrastructure/env"
+	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
 	"github.com/rs/zerolog"
 )
 
@@ -24,6 +26,8 @@ func init() {
 }
 
 func MergeOrCreate(ctx context.Context, cbClient client.ContextBrokerClient, id string, typeName string, properties []entities.EntityDecoratorFunc) error {
+	log := logging.GetFromContext(ctx)
+
 	headers := map[string][]string{"Content-Type": {"application/ld+json"}}
 
 	fragment, err := entities.NewFragment(properties...)
@@ -48,12 +52,18 @@ func MergeOrCreate(ctx context.Context, cbClient client.ContextBrokerClient, id 
 		if err != nil {
 			return fmt.Errorf("failed to create entity %s, %w", id, err)
 		}
+
+		log.Debug().Msgf("create entity %s", id)
+
+		return nil
 	}
+
+	log.Debug().Msgf("merge entity %s", id)
 
 	return nil
 }
 
-func NewBeach(badplats serviceguiden.Content, nutsCode string) []entities.EntityDecoratorFunc {
+func NewBeachProps(badplats serviceguiden.Content, nutsCode string) []entities.EntityDecoratorFunc {
 	props := []entities.EntityDecoratorFunc{}
 
 	lat := badplats.Position.Latitude
@@ -75,7 +85,7 @@ func NewBeach(badplats serviceguiden.Content, nutsCode string) []entities.Entity
 		decorators.Text("description", badplats.Description),
 		decorators.Text("areaServed", badplats.AreaServed()),
 		decorators.Text("dataProvider", "ServiceGuiden"),
-		decorators.Text("source", badplats.Id),
+		decorators.Text("source", strconv.FormatInt(badplats.BusinessId, 10)),
 		decorators.DateCreated(time.Now().UTC().Format(time.RFC3339)),
 		decorators.TextList("beachType", badplats.BeachTypes()),
 		decorators.TextList("seeAlso", seeAlso),
