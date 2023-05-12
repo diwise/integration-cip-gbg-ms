@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/diwise/context-broker/pkg/ngsild/client"
@@ -19,10 +18,14 @@ import (
 
 var havOchVattenProfileUrl string
 var seeAlsoUrl string
+var dataProvider string
+var source string
 
 func init() {
 	havOchVattenProfileUrl = env.GetVariableOrDefault(zerolog.Logger{}, "HAV_OCH_VATTEN_PROFILE_URL", "https://badplatsen.havochvatten.se/badplatsen/api/testlocationprofile")
 	seeAlsoUrl = env.GetVariableOrDefault(zerolog.Logger{}, "SEE_ALSO_URL", "https://goteborg.se/wps/portal/start/uppleva-och-gora/idrott-motion-och-friluftsliv/simma-och-bada/badplatser/hitta-badplatser-utomhusbad/?id=")
+	dataProvider = env.GetVariableOrDefault(zerolog.Logger{}, "DATA_PROVIDER", "ServiceGuiden")
+	source = env.GetVariableOrDefault(zerolog.Logger{}, "SOURCE", "se:goteborg:serviceguiden:businessid:")
 }
 
 func MergeOrCreate(ctx context.Context, cbClient client.ContextBrokerClient, id string, typeName string, properties []entities.EntityDecoratorFunc) error {
@@ -73,6 +76,8 @@ func NewBeachProps(badplats serviceguiden.Content, nutsCode string) []entities.E
 		return s != ""
 	})
 
+	source := fmt.Sprintf("%s%d", source, badplats.BusinessId)
+
 	props = append(props,
 		decorators.LocationMP([][][][]float64{{{
 			{lon, lat},
@@ -84,8 +89,8 @@ func NewBeachProps(badplats serviceguiden.Content, nutsCode string) []entities.E
 		decorators.Name(badplats.Name),
 		decorators.Text("description", badplats.Description),
 		decorators.Text("areaServed", badplats.AreaServed()),
-		decorators.Text("dataProvider", "ServiceGuiden"),
-		decorators.Text("source", strconv.FormatInt(badplats.BusinessId, 10)),
+		decorators.Text("dataProvider", dataProvider),
+		decorators.Text("source", source),
 		decorators.DateCreated(time.Now().UTC().Format(time.RFC3339)),
 		decorators.TextList("beachType", badplats.BeachTypes()),
 		decorators.TextList("seeAlso", seeAlso),
