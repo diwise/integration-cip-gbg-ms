@@ -2,11 +2,14 @@ package main
 
 import (
 	"context"
+	"crypto/md5"
+	"encoding/hex"
 	"errors"
 	"flag"
 
 	"github.com/diwise/context-broker/pkg/datamodels/fiware"
 	"github.com/diwise/context-broker/pkg/ngsild/client"
+	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 
 	"github.com/diwise/integration-cip-gbg-ms/internal/pkg/application/cip"
@@ -51,20 +54,12 @@ func run(ctx context.Context, sgClient serviceguiden.ServiceGuidenClient, lookup
 		return err
 	}
 
-	getBeachID := func(nutsCode, badplatsID string) string {
-		if nutsCode != "" {
-			return fiware.BeachIDPrefix + nutsCode
-		} else {
-			return fiware.BeachIDPrefix + badplatsID
-		}
-	}
-
 	errs := []error{}
 
 	for _, badplats := range badplatser {
 		nutsCode, _ := lookupTable.GetNutsCode(badplats.Id)
-		props := cip.NewBeach(badplats, nutsCode)
-		beachID := getBeachID(nutsCode, badplats.Id)
+		props := cip.NewBeachProps(badplats, nutsCode)
+		beachID := fiware.BeachIDPrefix + deterministicGUID("ServiceGuiden", badplats.Id)
 
 		err := cip.MergeOrCreate(ctx, cbClient, beachID, fiware.BeachTypeName, props)
 		if err != nil {
@@ -74,4 +69,17 @@ func run(ctx context.Context, sgClient serviceguiden.ServiceGuidenClient, lookup
 	}
 
 	return errors.Join(errs...)
+}
+
+func deterministicGUID(dataProvider string, id string) string {
+	md5hash := md5.New()
+	md5hash.Write([]byte(id + dataProvider))
+	md5string := hex.EncodeToString(md5hash.Sum(nil))
+
+	unique, err := uuid.FromBytes([]byte(md5string[0:16]))
+	if err != nil {
+		return uuid.New().String()
+	}
+
+	return unique.String()
 }
