@@ -6,11 +6,11 @@ import (
 	"encoding/hex"
 	"errors"
 	"flag"
+	"log/slog"
 
 	"github.com/diwise/context-broker/pkg/datamodels/fiware"
 	"github.com/diwise/context-broker/pkg/ngsild/client"
 	"github.com/google/uuid"
-	"github.com/rs/zerolog"
 
 	"github.com/diwise/integration-cip-gbg-ms/internal/pkg/application/cip"
 	"github.com/diwise/integration-cip-gbg-ms/internal/pkg/application/lookup"
@@ -35,8 +35,8 @@ func main() {
 	flag.StringVar(&serviceGuidenFilePath, "sg", "/opt/diwise/config/serviceguiden.json", "A file with ServiceGuiden contents")
 	flag.Parse()
 
-	serviceGuidenUrl := env.GetVariableOrDefault(logger, "SERVICE_GUIDEN", "https://microservices.goteborg.se/sdw-service/api/internal/v1/sites?size=10000")
-	contextBrokerUrl := env.GetVariableOrDefault(logger, "CONTEXT_BROKER", "http://context-broker")
+	serviceGuidenUrl := env.GetVariableOrDefault(ctx, "SERVICE_GUIDEN", "https://microservices.goteborg.se/sdw-service/api/internal/v1/sites?size=10000")
+	contextBrokerUrl := env.GetVariableOrDefault(ctx, "CONTEXT_BROKER", "http://context-broker")
 
 	cbClient := client.NewContextBrokerClient(contextBrokerUrl)
 	sgClient := serviceguiden.New(serviceGuidenUrl, serviceGuidenFilePath)
@@ -44,11 +44,11 @@ func main() {
 
 	err := run(ctx, sgClient, lookupTable, cbClient, logger)
 	if err != nil {
-		logger.Error().Err(err).Msg("failed to create or update beaches")
+		logger.Error("failed to create or update beaches", "err", err.Error())
 	}
 }
 
-func run(ctx context.Context, sgClient serviceguiden.ServiceGuidenClient, lookupTable lookup.LookupTable, cbClient client.ContextBrokerClient, logger zerolog.Logger) error {
+func run(ctx context.Context, sgClient serviceguiden.ServiceGuidenClient, lookupTable lookup.LookupTable, cbClient client.ContextBrokerClient, logger *slog.Logger) error {
 	badplatser, err := sgClient.Badplatser(ctx)
 	if err != nil {
 		return err
@@ -57,13 +57,13 @@ func run(ctx context.Context, sgClient serviceguiden.ServiceGuidenClient, lookup
 	errs := []error{}
 
 	for _, badplats := range badplatser {
-		nutsCode, _ := lookupTable.GetNutsCode(badplats.Id)
+		nutsCode, _ := lookupTable.GetNutsCode(badplats.ID())
 		props := cip.NewBeachProps(badplats, nutsCode)
-		beachID := fiware.BeachIDPrefix + deterministicGUID("ServiceGuiden", badplats.Id)
+		beachID := fiware.BeachIDPrefix + deterministicGUID("ServiceGuiden", badplats.ID())
 
 		err := cip.MergeOrCreate(ctx, cbClient, beachID, fiware.BeachTypeName, props)
 		if err != nil {
-			logger.Error().Err(err).Msgf("faild to merge %s", beachID)
+			logger.Error("faild to merge beach", slog.String("beach_id", beachID), slog.String("err", err.Error()))
 			errs = append(errs, err)
 		}
 	}

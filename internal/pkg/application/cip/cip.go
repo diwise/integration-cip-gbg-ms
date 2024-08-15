@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/diwise/context-broker/pkg/ngsild/client"
@@ -13,7 +14,6 @@ import (
 	"github.com/diwise/integration-cip-gbg-ms/internal/pkg/application/serviceguiden"
 	"github.com/diwise/service-chassis/pkg/infrastructure/env"
 	"github.com/diwise/service-chassis/pkg/infrastructure/o11y/logging"
-	"github.com/rs/zerolog"
 )
 
 var havOchVattenProfileUrl string
@@ -22,10 +22,10 @@ var dataProvider string
 var source string
 
 func init() {
-	havOchVattenProfileUrl = env.GetVariableOrDefault(zerolog.Logger{}, "HAV_OCH_VATTEN_PROFILE_URL", "https://badplatsen.havochvatten.se/badplatsen/api/testlocationprofile")
-	seeAlsoUrl = env.GetVariableOrDefault(zerolog.Logger{}, "SEE_ALSO_URL", "https://goteborg.se/wps/portal/start/uppleva-och-gora/idrott-motion-och-friluftsliv/simma-och-bada/badplatser/hitta-badplatser-utomhusbad/?id=")
-	dataProvider = env.GetVariableOrDefault(zerolog.Logger{}, "DATA_PROVIDER", "ServiceGuiden")
-	source = env.GetVariableOrDefault(zerolog.Logger{}, "SOURCE", "se:goteborg:serviceguiden:businessid:")
+	havOchVattenProfileUrl = env.GetVariableOrDefault(context.Background(), "HAV_OCH_VATTEN_PROFILE_URL", "https://badplatsen.havochvatten.se/badplatsen/api/testlocationprofile")
+	seeAlsoUrl = env.GetVariableOrDefault(context.Background(), "SEE_ALSO_URL", "https://goteborg.se/wps/portal/start/uppleva-och-gora/idrott-motion-och-friluftsliv/simma-och-bada/badplatser/hitta-badplatser-utomhusbad/?id=")
+	dataProvider = env.GetVariableOrDefault(context.Background(), "DATA_PROVIDER", "ServiceGuiden")
+	source = env.GetVariableOrDefault(context.Background(), "SOURCE", "se:goteborg:serviceguiden:businessid:")
 }
 
 func MergeOrCreate(ctx context.Context, cbClient client.ContextBrokerClient, id string, typeName string, properties []entities.EntityDecoratorFunc) error {
@@ -56,27 +56,27 @@ func MergeOrCreate(ctx context.Context, cbClient client.ContextBrokerClient, id 
 			return fmt.Errorf("failed to create entity %s, %w", id, err)
 		}
 
-		log.Debug().Msgf("create entity %s", id)
+		log.Debug("create entity", slog.String("entity_id", id))
 
 		return nil
 	}
 
-	log.Debug().Msgf("merge entity %s", id)
+	log.Debug("merge entity", slog.String("entity_id", id))
 
 	return nil
 }
 
-func NewBeachProps(badplats serviceguiden.Content, nutsCode string) []entities.EntityDecoratorFunc {
+func NewBeachProps(badplats serviceguiden.Beach, nutsCode string) []entities.EntityDecoratorFunc {
 	props := []entities.EntityDecoratorFunc{}
 
-	lat := badplats.Position.Latitude
-	lon := badplats.Position.Longitude
+	lat := badplats.Position().Latitude
+	lon := badplats.Position().Longitude
 
-	seeAlso := filter([]string{getSeeAlso(badplats), getNutsCodeUrl(nutsCode), badplats.AccessibilityUrl}, func(s string) bool {
+	seeAlso := filter([]string{getSeeAlso(badplats), getNutsCodeUrl(nutsCode), badplats.AccessibilityUrl()}, func(s string) bool {
 		return s != ""
 	})
 
-	source := fmt.Sprintf("%s%d", source, badplats.BusinessId)
+	source := fmt.Sprintf("%s%d", source, badplats.BusinessId())
 
 	props = append(props,
 		decorators.LocationMP([][][][]float64{{{
@@ -86,8 +86,8 @@ func NewBeachProps(badplats serviceguiden.Content, nutsCode string) []entities.E
 			{lon, lat},
 		}}}),
 		entities.DefaultContext(),
-		decorators.Name(badplats.Name),
-		decorators.Text("description", badplats.Description),
+		decorators.Name(badplats.Name()),
+		decorators.Text("description", badplats.Description()),
 		decorators.Text("areaServed", badplats.AreaServed()),
 		decorators.Text("dataProvider", dataProvider),
 		decorators.Text("source", source),
@@ -99,8 +99,8 @@ func NewBeachProps(badplats serviceguiden.Content, nutsCode string) []entities.E
 	return props
 }
 
-func getSeeAlso(badplats serviceguiden.Content) string {
-	return fmt.Sprintf("%s%d", seeAlsoUrl, badplats.BusinessId)
+func getSeeAlso(badplats serviceguiden.Beach) string {
+	return fmt.Sprintf("%s%d", seeAlsoUrl, badplats.BusinessId())
 }
 
 func getNutsCodeUrl(nutsCode string) string {

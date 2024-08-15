@@ -4,9 +4,8 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
-
-	"github.com/rs/zerolog"
 )
 
 type Lookup struct {
@@ -24,20 +23,25 @@ type impl struct {
 	table map[string]*Lookup
 }
 
-func New(logger zerolog.Logger, filePath string) LookupTable {
+func fatal(log *slog.Logger, msg string, args ...string) {
+	log.Error(fmt.Sprintf(msg, args))
+	panic(msg)
+}
+
+func New(logger *slog.Logger, filePath string) LookupTable {
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		logger.Fatal().Msgf("file %s does not exist", filePath)
+		fatal(logger, "file %s does not exist", filePath)
 	}
 
 	file, err := os.Open(filePath)
 	if err != nil {
-		logger.Fatal().Msgf("unable to open file %s", filePath)
+		fatal(logger, "unable to open file %s", filePath)
 	}
 	defer file.Close()
 
 	data, err := load(logger, file)
 	if err != nil {
-		logger.Fatal().Msgf("unable to load data from file %s", filePath)
+		fatal(logger, "unable to load data from file %s", filePath)
 	}
 
 	return &impl{
@@ -45,7 +49,7 @@ func New(logger zerolog.Logger, filePath string) LookupTable {
 	}
 }
 
-func load(log zerolog.Logger, file io.Reader) (map[string]*Lookup, error) {
+func load(_ *slog.Logger, file io.Reader) (map[string]*Lookup, error) {
 	r := csv.NewReader(file)
 	r.Comma = ';'
 

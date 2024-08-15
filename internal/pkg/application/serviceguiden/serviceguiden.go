@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 
@@ -15,12 +16,12 @@ import (
 )
 
 type ServiceGuidenClient interface {
-	Badplatser(ctx context.Context) ([]Content, error)
+	Badplatser(ctx context.Context) ([]Beach, error)
 }
 
 type client struct {
 	serviceUrl string
-	badplatser []Content
+	badplatser []Beach
 	contents   []Content
 }
 
@@ -93,23 +94,21 @@ func (sgc client) Get(ctx context.Context) ([]Content, error) {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	contents := struct {
-		Content []Content `json:"content"`
-	}{}
+	var serviceGuidenData ServiceGuiden
 
-	err = json.Unmarshal(body, &contents)
+	err = json.Unmarshal(body, &serviceGuidenData)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal data: %w", err)
 	}
 
-	return contents.Content, err
+	return serviceGuidenData.Contents, err
 }
 
-func (sgc *client) Badplatser(ctx context.Context) ([]Content, error) {
+func (sgc *client) Badplatser(ctx context.Context) ([]Beach, error) {
 	logger := logging.GetFromContext(ctx)
 
 	if len(sgc.badplatser) > 0 {
-		logger.Debug().Msgf("returning %d previously fetched beaches", len(sgc.badplatser))
+		logger.Debug("returning previously fetched beaches", slog.Int("count", len(sgc.badplatser)))
 		return sgc.badplatser, nil
 	}
 
@@ -121,19 +120,15 @@ func (sgc *client) Badplatser(ctx context.Context) ([]Content, error) {
 		sgc.contents = content
 	}
 
-	logger.Debug().Msgf("%d contents fetched from ServiceGuiden", len(sgc.contents))
+	logger.Debug("contents fetched from ServiceGuiden", slog.Int("count", len(sgc.contents)))
 
 	for _, c := range sgc.contents {
-		if !c.Deleted {
-			for _, st := range c.ServiceTypes {
-				if st.Name == "Badplatser" {
-					sgc.badplatser = append(sgc.badplatser, c)
-				}
-			}
+		if c.IsBadplats() {
+			sgc.badplatser = append(sgc.badplatser, c)
 		}
 	}
 
-	logger.Debug().Msgf("%d beaches found", len(sgc.badplatser))
+	logger.Debug("beaches found", slog.Int("count", len(sgc.badplatser)))
 
 	return sgc.badplatser, nil
 }
