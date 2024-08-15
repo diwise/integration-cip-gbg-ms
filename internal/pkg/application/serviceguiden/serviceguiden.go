@@ -25,8 +25,8 @@ type client struct {
 	contents   []Content
 }
 
-func New(url, filePath string) ServiceGuidenClient {
-	c, err := loadContentsFromFile(filePath)
+func New(ctx context.Context, url, filePath string) ServiceGuidenClient {
+	c, err := loadContentsFromFile(ctx, filePath)
 	if err != nil {
 		c = []Content{}
 	}
@@ -37,13 +37,19 @@ func New(url, filePath string) ServiceGuidenClient {
 	}
 }
 
-func loadContentsFromFile(filePath string) (content []Content, err error) {
+func loadContentsFromFile(ctx context.Context, filePath string) (content []Content, err error) {
+	log := logging.GetFromContext(ctx)
+
+	log.Debug("load contents from file", slog.String("filepath", filePath))
+
 	if _, err = os.Stat(filePath); os.IsNotExist(err) {
+		log.Debug("file not found", slog.String("filename", filePath))
 		return
 	}
 
 	f, err := os.Open(filePath)
 	if err != nil {
+		log.Debug("could not open file", "err", err.Error())
 		return
 	}
 	defer f.Close()
@@ -53,10 +59,16 @@ func loadContentsFromFile(filePath string) (content []Content, err error) {
 		return
 	}
 
-	err = json.Unmarshal(b, &content)
+	var serviceGuidenData ServiceGuiden
+
+	err = json.Unmarshal(b, &serviceGuidenData)
 	if err != nil {
 		return
 	}
+
+	content = serviceGuidenData.Contents
+
+	log.Debug("contents loaded from file", slog.Int("count", len(content)), slog.String("filepath", filePath))
 
 	return
 }
@@ -113,14 +125,18 @@ func (sgc *client) Badplatser(ctx context.Context) ([]Beach, error) {
 	}
 
 	if len(sgc.contents) == 0 {
+		logger.Debug("need to fetch contents from serviceguiden API")
+
 		content, err := sgc.Get(ctx)
 		if err != nil {
 			return nil, err
 		}
 		sgc.contents = content
-	}
 
-	logger.Debug("contents fetched from ServiceGuiden", slog.Int("count", len(sgc.contents)))
+		logger.Debug("contents fetched from ServiceGuiden", slog.Int("count", len(sgc.contents)))
+	} else {
+		logger.Debug("contents previously loaded")
+	}
 
 	for _, c := range sgc.contents {
 		if c.IsBadplats() {

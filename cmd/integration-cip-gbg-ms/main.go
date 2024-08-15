@@ -35,11 +35,15 @@ func main() {
 	flag.StringVar(&serviceGuidenFilePath, "sg", "/opt/diwise/config/serviceguiden.json", "A file with ServiceGuiden contents")
 	flag.Parse()
 
+	logger.Debug("args:", slog.String("references", lookupTableFilePath), slog.String("sg", serviceGuidenFilePath))
+
 	serviceGuidenUrl := env.GetVariableOrDefault(ctx, "SERVICE_GUIDEN", "https://microservices.goteborg.se/sdw-service/api/internal/v1/sites?size=10000")
 	contextBrokerUrl := env.GetVariableOrDefault(ctx, "CONTEXT_BROKER", "http://context-broker")
 
+	logger.Debug("env:", slog.String("SERVICE_GUIDEN", serviceGuidenUrl), slog.String("CONTEXT_BROKER", contextBrokerUrl))
+
 	cbClient := client.NewContextBrokerClient(contextBrokerUrl)
-	sgClient := serviceguiden.New(serviceGuidenUrl, serviceGuidenFilePath)
+	sgClient := serviceguiden.New(ctx, serviceGuidenUrl, serviceGuidenFilePath)
 	lookupTable := lookup.New(logger, lookupTableFilePath)
 
 	err := run(ctx, sgClient, lookupTable, cbClient, logger)
